@@ -1,0 +1,165 @@
+{
+    admin off
+    frankenphp
+}
+
+(serveFile) {
+    file_server {
+        index []
+        precompressed br gzip
+        disable_canonical_uris
+    }
+}
+
+(frontend_headers) {
+    header {
+        ?Permissions-Policy "interest-cohort=()"
+        ?X-XSS-Protection "0"
+        ?X-Content-Type-Options "nosniff"
+        ?X-Frame-Options "DENY"
+        ?Content-Security-Policy "frame-ancestors 'none'"
+        ?Referrer-Policy "origin-when-cross-origin"
+        ?Cache-Control "public, max-age=0, must-revalidate"
+        -Server
+        -X-Powered-By
+    }
+}
+
+{$FONTEND_HOST}:{$FONTEND_PORT:80} {
+    root * /var/www/html/frontend/public
+
+    import frontend_headers
+
+    handle_errors {
+        import frontend_headers
+
+    	@hasErrorPage file /errors/{err.status_code}.html /errors/index.html
+    	handle @hasErrorPage {
+    		rewrite * {file_match.relative}
+		    import serveFile
+    	}
+
+    	respond "ERROR {err.status_code} {err.status_text}" "{err.status_code}"
+    }
+
+    # Serve assets
+    @asset {
+        not path *.html
+        file {path}
+    }
+    route @asset {
+        import serveFile
+    }
+
+    @internalUri path /errors /errors/*
+    route @internalUri {
+        error * "Not Found" 404
+    }
+
+    # Serve pages
+    @pageUri expression ! {path}.endsWith("/")
+    route @pageUri {
+        # Check if page HTML file exists and serve it
+        @hasPageFile {
+            not path */index
+            file {path}.html
+        }
+        route @hasPageFile {
+            rewrite * {file_match.relative}
+            import serveFile
+        }
+
+        # Check if index HTML file exists and add tailing slash via a redirect
+        @hasIndexFile file {path}/index.html
+        route @hasIndexFile {
+            header ?Cache-Control "public, max-age=0, must-revalidate"
+            redir * {uri}/ 308
+        }
+    }
+
+    # Serve index pages
+    @indexUri path_regexp indexUri ^(?<netPath>.*)/$
+    route @indexUri {
+        # Check if index HTML file exists and serve it
+        @hasIndexFile file {path}/index.html
+        route @hasIndexFile {
+            rewrite * {file_match.relative}
+            import serveFile
+        }
+
+        # Check if page HTML file exists and remove tailing slash via a redirect
+        @hasPageFile {
+            not path */index
+            file {re.indexUri.netPath}.html
+        }
+        route @hasPageFile {
+            uri * strip_suffix /
+            header ?Cache-Control "public, max-age=0, must-revalidate"
+            redir * {uri} 308
+        }
+    }
+
+    # Strip .html file extension
+    @htmlUri path_regexp htmlUri ^(?<netPath>.*)\.html$
+    route @htmlUri {
+        @hasPageFile {
+            not path */index.html
+            file {path}
+        }
+        route @hasPageFile {
+            uri * strip_suffix .html
+            header ?Cache-Control "public, max-age=0, must-revalidate"
+            redir * {uri} 308
+        }
+
+        @hasIndexFile file {re.htmlUri.netPath}/index.html
+        route @hasIndexFile {
+            uri * strip_suffix .html
+            header ?Cache-Control "public, max-age=0, must-revalidate"
+            redir * {uri}/ 308
+        }
+    }
+
+    # Fallback to 404
+    error * "Not Found" 404
+}
+
+(backend_headers) {
+    header {
+        ?X-Content-Type-Options "nosniff"
+        ?Cache-Control "private, max-age=0, must-revalidate"
+        -Server
+        -X-Powered-By
+    }
+}
+
+{$BACKEND_HOST}:{$BACKEND_PORT:8080} {
+    root * /var/www/html/backend/public
+
+    import backend_headers
+
+    handle_errors {
+        import backend_headers
+
+    	respond "ERROR {err.status_code} {err.status_text}" "{err.status_code}"
+    }
+
+    route /echo {
+        rewrite * echo.php
+        php
+    }
+
+    error * "Not Found" 404
+}
+
+# Fallback for unknown server addresses
+http:// {
+    header {
+        ?X-Content-Type-Options "nosniff"
+        ?Cache-Control "private, max-age=0, must-revalidate"
+        -Server
+        -X-Powered-By
+    }
+
+    respond "ERROR 421 Misdirected Request" 421
+}
