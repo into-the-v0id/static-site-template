@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 function respondText(string $text, int|null $statusCode = null): void {
     if ($statusCode !== null) {
-        http_response_code(400);
+        http_response_code($statusCode);
     }
 
     header('Content-Type: text/plain');
