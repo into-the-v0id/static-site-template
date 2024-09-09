@@ -18,6 +18,7 @@
 
 (frontend_headers) {
     header {
+        Strict-Transport-Security "max-age=31536000;"
         ?Permissions-Policy "interest-cohort=()"
         ?X-XSS-Protection "0"
         ?X-Content-Type-Options "nosniff"
@@ -131,6 +132,7 @@
 
 (backend_headers) {
     header {
+        Strict-Transport-Security "max-age=31536000;"
         ?X-Content-Type-Options "nosniff"
         ?Cache-Control "private, max-age=0, must-revalidate"
         -Server
