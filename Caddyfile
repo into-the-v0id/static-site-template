@@ -149,8 +149,24 @@
     	respond "ERROR {err.status_code} {err.status_text}" "{err.status_code}"
     }
 
-    route /echo {
-        rewrite * echo.php
+    @hasPhpFile {
+        not path */index
+        file {path}.php
+    }
+    route @hasPhpFile {
+        rewrite * {file_match.relative}
+        php
+    }
+
+    @hasPhpIndexFile file {path}/index.php
+    route @hasPhpIndexFile {
+        rewrite * {file_match.relative}
+        php
+    }
+
+    @hasPhpDefaultFile file /index.php
+    route @hasPhpIndexFile {
+        rewrite * {file_match.relative}
         php
     }
 

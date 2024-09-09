@@ -4,7 +4,7 @@ A template for sites with mainly static content and little dynamic content. It c
 
 ## Setup
 
-Put your static frontend files into [frontend/public](./frontend/public). Put your PHP files into [backend/public](./backend/public) and create routes for them in the [Caddyfile](./Caddyfile).
+Put your static frontend files into [frontend/public](./frontend/public) and put your PHP files into [backend/public](./backend/public).
 
 Build the docker image:
 ```bash
